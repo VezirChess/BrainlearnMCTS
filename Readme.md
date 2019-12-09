@@ -1,6 +1,6 @@
 ## Overview
 
-BrainLearn is a free, powerful UCI chess engine derived from BrainFish ([https://zipproth.de/Brainfish/download/](https://zipproth.de/Brainfish/download/)). It is not a complete chess program and requires a UCI-compatible GUI (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably. Read the documentation for your GUI of choice for information about how to use Stockfish with it.
+BrainLearnMCTS is a free, powerful UCI chess engine derived from BrainFish ([https://zipproth.de/Brainfish/download/](https://zipproth.de/Brainfish/download/)). It is not a complete chess program and requires a UCI-compatible GUI (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably. Read the documentation for your GUI of choice for information about how to use Stockfish with it.
 
 ## Files
 
@@ -12,7 +12,7 @@ This distribution of BrainLearn consists of the following files:
 
 ## UCI parameters
 
-BrainLearn hash the same options as BrainFish, but it implements a persisted learning algorithm, managing a file named experience.bin.
+BrainLearnMCTS hash the same options as BrainFish, but it implements a persisted learning algorithm, managing a file named experience.bin.
 
 It is a collection of one or more positions stored with the following format (similar to in memory Stockfish Transposition Table):
 
@@ -50,7 +50,7 @@ Converting pgn to brainlearn format is really simple.
 
 Requirements
 1. Download cuteChess gui
-2. Download brainlearn
+2. Download brainlearnMCTS
 3. Download stockfish or equivalent
 3. Download the pgn files you want to convert
 
