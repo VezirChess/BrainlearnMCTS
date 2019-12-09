@@ -1,115 +1,72 @@
-### Overview
+## Overview
 
-[![Build Status](https://travis-ci.org/official-stockfish/Stockfish.svg?branch=master)](https://travis-ci.org/official-stockfish/Stockfish)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/official-stockfish/Stockfish?svg=true)](https://ci.appveyor.com/project/mcostalba/stockfish)
+BrainLearn is a free, powerful UCI chess engine derived from BrainFish ([https://zipproth.de/Brainfish/download/](https://zipproth.de/Brainfish/download/)). It is not a complete chess program and requires a UCI-compatible GUI (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably. Read the documentation for your GUI of choice for information about how to use Stockfish with it.
 
-Stockfish is a free UCI chess engine derived from Glaurung 2.1. It is
-not a complete chess program and requires some UCI-compatible GUI
-(e.g. XBoard with PolyGlot, eboard, Arena, Sigma Chess, Shredder, Chess
-Partner or Fritz) in order to be used comfortably. Read the
-documentation for your GUI of choice for information about how to use
-Stockfish with it.
+## Files
 
-This version of Stockfish supports up to 512 cores. The engine defaults
-to one search thread, so it is therefore recommended to inspect the value of
-the *Threads* UCI parameter, and to make sure it equals the number of CPU
-cores on your computer.
+This distribution of BrainLearn consists of the following files:
 
-This version of Stockfish has support for Syzygybases.
+- Readme.md, the file you are currently reading.
+- Copying.txt, a text file containing the GNU General Public License version 3.
+- src, a subdirectory containing the full source code, including a Makefile that can be used to compile BrainLearn on Unix-like systems.
 
+## UCI parameters
 
-### Files
+BrainLearn hash the same options as BrainFish, but it implements a persisted learning algorithm, managing a file named experience.bin.
 
-This distribution of Stockfish consists of the following files:
+It is a collection of one or more positions stored with the following format (similar to in memory Stockfish Transposition Table):
 
-  * Readme.md, the file you are currently reading.
+- _best move_
+- _board signature (hash key)_
+- _best move depth_
+- _best move score_
 
-  * Copying.txt, a text file containing the GNU General Public License.
+This file is loaded in an hashtable at the engine load and updated each time the engine receive quit or stop uci command.
+When BrainLearn starts a new game or when we have max 8 pieces on the chessboard, the learning is activated and the hash table updated each time the engine has a best score
+at a depth >= 4 PLIES, according to Stockfish aspiration window.
 
-  * src, a subdirectory containing the full source code, including a Makefile
-    that can be used to compile Stockfish on Unix-like systems.
+At the engine loading, there is an automatic merge to experience.bin files, if we put the other ones, based on the following convention:
 
+&lt;fileType&gt;&lt;qualityIndex&gt;.bin
 
-### Syzygybases
+where
 
-**Configuration**
+- _fileType=&quot;experience&quot;/&quot;bin&quot;_
+- _qualityIndex_ , an integer, incrementally from 0 on based on the file&#39;s quality assigned by the user (0 best quality and so on)
 
-Syzygybases are configured using the UCI options "SyzygyPath",
-"SyzygyProbeDepth", "Syzygy50MoveRule" and "SyzygyProbeLimit".
+N.B.
 
-The option "SyzygyPath" should be set to the directory or directories that
-contain the .rtbw and .rtbz files. Multiple directories should be
-separated by ";" on Windows and by ":" on Unix-based operating systems.
-**Do not use spaces around the ";" or ":".**
+Because of disk access, to be effective, the learning must be made at no bullet time controls (less than 5 minutes/game).
 
-Example: `C:\tablebases\wdl345;C:\tablebases\wdl6;D:\tablebases\dtz345;D:\tablebases\dtz6`
+### Opening variety
 
-It is recommended to store .rtbw files on an SSD. There is no loss in
-storing the .rtbz files on a regular HD.
+_Integer, Default: 0, Min: 0, Max: 40_
+To play different opening lines from default (0), if not from book (see below).
+Higher variety -> more probable loss of ELO
 
-Increasing the "SyzygyProbeDepth" option lets the engine probe less
-aggressively. Set this option to a higher value if you experience too much
-slowdown (in terms of nps) due to TB probing.
+## pgn_to_bl_converter
 
-Set the "Syzygy50MoveRule" option to false if you want tablebase positions
-that are drawn by the 50-move rule to count as win or loss. This may be useful
-for correspondence games (because of tablebase adjudication).
+Converting pgn to brainlearn format is really simple.
 
-The "SyzygyProbeLimit" option should normally be left at its default value.
+Requirements
+1. Download cuteChess gui
+2. Download brainlearn
+3. Download stockfish or equivalent
+3. Download the pgn files you want to convert
 
-**What to expect**
-If the engine is searching a position that is not in the tablebases (e.g.
-a position with 7 pieces), it will access the tablebases during the search.
-If the engine reports a very large score (typically 123.xx), this means
-that it has found a winning line into a tablebase position.
+In Cute Chess, set a tournament according to the photo in this link:
+[CuteChess Settings](https://github.com/amchess/BrainLearn/tree/master/doc/pgn_to_bl.PNG)
 
-If the engine is given a position to search that is in the tablebases, it
-will use the tablebases at the beginning of the search to preselect all
-good moves, i.e. all moves that preserve the win or preserve the draw while
-taking into account the 50-move rule.
-It will then perform a search only on those moves. **The engine will not move
-immediately**, unless there is only a single good move. **The engine likely
-will not report a mate score even if the position is known to be won.**
+- Add the 2 engines (One should be brainlearn)
 
-It is therefore clear that behaviour is not identical to what one might
-be used to with Nalimov tablebases. There are technical reasons for this
-difference, the main technical reason being that Nalimov tablebases use the
-DTM metric (distance-to-mate), while Syzygybases use a variation of the
-DTZ metric (distance-to-zero, zero meaning any move that resets the 50-move
-counter). This special metric is one of the reasons that Syzygybases are
-more compact than Nalimov tablebases, while still storing all information
-needed for optimal play and in addition being able to take into account
-the 50-move rule.
+-start a tournament with brainlearn and any other engine. It will convert all the games in the pgn file and save them to game.bin
 
+Note: We recommend you use games from high quality play.
 
-### Compiling it yourself
+## Terms of use
 
-On Unix-like systems, it should be possible to compile Stockfish
-directly from the source code with the included Makefile.
+BrainLearn is free, and distributed under the **GNU General Public License version 3** (GPL v3). Essentially, this means that you are free to do almost exactly what you want with the program, including distributing it among your friends, making it available for download from your web site, selling it (either by itself or as part of some bigger software package), or using it as the starting point for a software project of your own.
 
-Stockfish has support for 32 or 64-bit CPUs, the hardware POPCNT
-instruction, big-endian machines such as Power PC, and other platforms.
+The only real limitation is that whenever you distribute BrainLearn in some way, you must always include the full source code, or a pointer to where the source code can be found. If you make any changes to the source code, these changes must also be made available under the GPL.
 
-In general it is recommended to run `make help` to see a list of make
-targets with corresponding descriptions. When not using the Makefile to
-compile (for instance with Microsoft MSVC) you need to manually
-set/unset some switches in the compiler command line; see file *types.h*
-for a quick reference.
-
-
-### Terms of use
-
-Stockfish is free, and distributed under the **GNU General Public License**
-(GPL). Essentially, this means that you are free to do almost exactly
-what you want with the program, including distributing it among your
-friends, making it available for download from your web site, selling
-it (either by itself or as part of some bigger software package), or
-using it as the starting point for a software project of your own.
-
-The only real limitation is that whenever you distribute Stockfish in
-some way, you must always include the full source code, or a pointer
-to where the source code can be found. If you make any changes to the
-source code, these changes must also be made available under the GPL.
-
-For full details, read the copy of the GPL found in the file named
-*Copying.txt*.
+For full details, read the copy of the GPL v3 found in the file named _Copying.txt_.
