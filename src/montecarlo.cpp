@@ -216,21 +216,7 @@ Node MonteCarlo::tree_policy() {
 
 //    assert(is_root(current_node()));
     descentCnt++;
-	
-/*	if(!Threads.stop.load(std::memory_order_relaxed))
-	{
-	Edge* rootEdge = best_child(current_node(), STAT_VISITS);
-    
-	Reward mPrior = calculate_prior(rootEdge->move,0, maximumPly+1);
-	
-	current_node()->lock.acquire();
-	rootEdge->prior = mPrior;
-	
-	rootEdge->meanActionValue = mPrior;
-	rootEdge->actionValue = rootEdge->visits * mPrior;
-	current_node()->lock.release();
-	}
-	*/
+
 
     if (number_of_sons(root) == 0)
         return root;
@@ -256,7 +242,7 @@ Node MonteCarlo::tree_policy() {
 		
 		
 		if(random >= 8 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
-			&& current_node()->depth <= 6)
+			&& current_node()->depth <= 12)
 		{
 			ABRollout = true;
 			
@@ -955,8 +941,8 @@ void MonteCarlo::default_parameters() {
    BACKUP_MINIMAX           = 1.0;
    PRIOR_FAST_EVAL_DEPTH    = 1;
    PRIOR_SLOW_EVAL_DEPTH    = 1;
-   UCB_UNEXPANDED_NODE      = 0.5;
-   UCB_EXPLORATION_CONSTANT = 0.3;
+   UCB_UNEXPANDED_NODE      = 0.9;
+   UCB_EXPLORATION_CONSTANT = 0.4;
    UCB_LOSSES_AVOIDANCE     = 1.0;
    UCB_LOG_TERM_FACTOR      = 0.0;
    UCB_USE_FATHER_VISITS    = true;
