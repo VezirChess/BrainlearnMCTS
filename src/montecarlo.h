@@ -182,6 +182,7 @@ public:
   Spinlock expandLock;  
   Edge* best_edge;
   bool expanded = false;
+  int depth = 0;
 };
 
 

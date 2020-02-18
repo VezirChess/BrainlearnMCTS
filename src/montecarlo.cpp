@@ -103,6 +103,7 @@ Node get_node(const Position& pos, bool mcts) {
    infos.number_of_sons   = 0;         // total number of legal moves
    infos.expandedSons     = 0;         // number of sons expanded by the Monte-Carlo algorithm
    infos.lastMove         = MOVE_NONE; // the move between the parent and this node
+   infos.depth = 0;
 
    debug << "inserting into the hash table: key = " << key1 << endl;
 
@@ -129,7 +130,10 @@ Move MonteCarlo::search() {
 		Reward reward;
        Node node = tree_policy();
        if(ABRollout)
-		   reward = value_to_reward(evaluate_with_minimax((maximumPly-ply) <= 6?(maximumPly-ply) * ONE_PLY: 6*ONE_PLY, -VALUE_INFINITE, VALUE_INFINITE));
+	   {
+		   int depth = node->depth + 1;
+		   reward = value_to_reward(evaluate_with_minimax(depth * ONE_PLY, -VALUE_INFINITE, VALUE_INFINITE));
+	   }
 	   else
 		reward = playout_policy(node);
        backup(node, reward, ABRollout);
@@ -255,9 +259,13 @@ Node MonteCarlo::tree_policy() {
 		int random = rand() % 10;
 		
 		
-		if(random >= 6 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed))
+		if(random >= 8 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
+			&& current_node()->depth <= 6)
 		{
 			ABRollout = true;
+			
+			current_node()->node_visits++;
+			current_node()->depth++;
 			
 			current_node()->lock.release();
 			return current_node();
@@ -269,7 +277,7 @@ Node MonteCarlo::tree_policy() {
 		
         current_node()->lock.release();
 		
-		if(!Threads.stop.load(std::memory_order_relaxed) && edge->visits <= 3)
+		if(!Threads.stop.load(std::memory_order_relaxed) && edge->visits <= 2)
 		{
 			int depth = edge->visits + 1;
 			prior = calculate_prior(m,0, depth);
