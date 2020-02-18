@@ -260,7 +260,7 @@ Node MonteCarlo::tree_policy() {
 		
 		
 		if(random >= 8 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
-			&& current_node()->depth <= 6)
+			&& current_node()->depth <= 12)
 		{
 			ABRollout = true;
 			
@@ -410,11 +410,7 @@ void MonteCarlo::backup(Node node, Reward r, bool ABmode) {
        current_node()->lock.acquire();
 
        // Compensate the virtual loss we had set in tree_policy()
-	   if(!ABmode)
-	   {
-		edge->visits = edge->visits - 1.0;
-	   }
-	   else
+	   if(ABmode)
 	   {
 		   edge->prior = r;
 		   ABmode = false;
@@ -988,7 +984,7 @@ void MonteCarlo::default_parameters() {
    PRIOR_FAST_EVAL_DEPTH    = 1;
    PRIOR_SLOW_EVAL_DEPTH    = 1;
    UCB_UNEXPANDED_NODE      = 0.5;
-   UCB_EXPLORATION_CONSTANT = 0.1;
+   UCB_EXPLORATION_CONSTANT = 0.2;
    UCB_LOSSES_AVOIDANCE     = 1.0;
    UCB_LOG_TERM_FACTOR      = 0.0;
    UCB_USE_FATHER_VISITS    = true;
