@@ -241,7 +241,7 @@ Node MonteCarlo::tree_policy() {
 		int random = rand() % 10;
 		
 		
-		if(random >= 8 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
+		if(random >= 6 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
 			&& current_node()->depth <= 12)
 		{
 			ABRollout = true;
