@@ -250,17 +250,13 @@ Node MonteCarlo::tree_policy() {
 		bool abplay = false;
 		bool priori = false;
 		
-		current_node()->lock.acquire();
-
-        current_node()->node_visits++;
-		
 		
 		srand(time(NULL));
 		int random = rand() % 10;
 		
 		
 		if(random >= 8 && !is_root(current_node()) && !Threads.stop.load(std::memory_order_relaxed)
-			&& current_node()->depth <= 12)
+			&& current_node()->depth <= 6)
 		{
 			ABRollout = true;
 			
@@ -270,39 +266,15 @@ Node MonteCarlo::tree_policy() {
 			current_node()->lock.release();
 			return current_node();
 		}
+		
+		current_node()->lock.acquire();
+
+        current_node()->node_visits++;
 
         // Add a virtual loss to this edge (for load balancing in the parallel MCTS)
         edge->visits          = edge->visits + 1.0;
-		
-		
-        current_node()->lock.release();
-		
-		if(!Threads.stop.load(std::memory_order_relaxed) && edge->visits <= 2)
-		{
-			int depth = edge->visits + 1;
-			prior = calculate_prior(m,0, depth);
-			abplay = true;
-		
-		}
-
-        current_node()->lock.acquire();
-
-//        current_node()->node_visits++;
-
-        // Add a virtual loss to this edge (for load balancing in the parallel MCTS)
-//        edge->visits          = edge->visits + 1.0;
-		
-		
-		if(abplay)
-		{			
-			edge->prior = prior;
-			current_node()->AB = true;
-			edge->actionValue = prior * edge->visits;
-			edge->meanActionValue = prior;
-		}
 		edge->actionValue     = edge->actionValue;
-		if(!abplay)
-			edge->meanActionValue = edge->actionValue / edge->visits;
+		edge->meanActionValue = edge->actionValue / edge->visits;
 
         current_node()->lock.release();
 
@@ -984,7 +956,7 @@ void MonteCarlo::default_parameters() {
    PRIOR_FAST_EVAL_DEPTH    = 1;
    PRIOR_SLOW_EVAL_DEPTH    = 1;
    UCB_UNEXPANDED_NODE      = 0.5;
-   UCB_EXPLORATION_CONSTANT = 0.2;
+   UCB_EXPLORATION_CONSTANT = 0.3;
    UCB_LOSSES_AVOIDANCE     = 1.0;
    UCB_LOG_TERM_FACTOR      = 0.0;
    UCB_USE_FATHER_VISITS    = true;
