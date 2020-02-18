@@ -133,6 +133,8 @@ Move MonteCarlo::search() {
 	   {
 		   int depth = node->depth + 1;
 		   reward = value_to_reward(evaluate_with_minimax(depth * ONE_PLY, -VALUE_INFINITE, VALUE_INFINITE));
+		   if(ply + depth >= maximumPly)
+			   maximumPly = ply + depth + 1;
 	   }
 	   else
 		reward = playout_policy(node);
@@ -350,7 +352,8 @@ void MonteCarlo::backup(Node node, Reward r, bool ABmode) {
 //   assert(node == current_node());
 //   assert(ply >= 1);
 
-   double weight = 1.0;
+   double weight = 0.0;
+   weight = ABmode? 1.0 : 0.8;
 
    while (!is_root(current_node()))
    {
