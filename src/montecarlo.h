@@ -55,7 +55,7 @@ public:
   bool computational_budget();
   Node tree_policy();
   Reward playout_policy(Node node);
-  void backup(Node node, Reward r, bool ABmode);
+  void backup(Node node, Reward r, bool ABmode, int ABDepth);
   Edge* best_child(Node node, EdgeStatistic statistic);
 
   // The UCB formula
@@ -74,7 +74,7 @@ public:
   Value reward_to_value(Reward r);
   Value evaluate_with_minimax(Depth d, Value alpha, Value beta);
   Reward evaluate_terminal();
-  Reward calculate_prior(Move m, int moveCount, int depth);
+  Reward calculate_prior(Move m, int moveCount, int depth, Value alpha, Value beta);
   void add_prior_to_node(Node node, Move m, Reward prior, int moveCount);
 
   // Tweaking the exploration algorithm
@@ -108,7 +108,6 @@ private:
   long            priorCnt;
   TimePoint       startTime;
   TimePoint       lastOutputTime;
-  bool ABRollout = false;
 
   // Flags and limits to tweak the algorithm
   long            MAX_DESCENTS;
@@ -120,6 +119,8 @@ private:
   bool            UCB_USE_FATHER_VISITS;
   int             PRIOR_FAST_EVAL_DEPTH;
   int             PRIOR_SLOW_EVAL_DEPTH;
+  
+  bool ABrollout;
 
   // Some stacks to do/undo the moves: for compatibility with the alpha-beta search
   // implementation, we want to be able to reference from stack[-4] to stack[MAX_PLY+2].
@@ -178,21 +179,15 @@ public:
   int      expandedSons    = 0;         // number of sons expanded by the Monte-Carlo algorithm
   Move     lastMove        = MOVE_NONE; // the move between the parent and this node
   Edge     children[MAX_CHILDREN];
-  bool AB = false;
-  Spinlock expandLock;  
-  Edge* best_edge;
-  bool expanded = false;
-  int depth = 0;
+  int ABDepth = 1;
+  Value ttValue = VALUE_NONE;
 };
 
 
 // The Monte-Carlo tree is stored implicitly in one big hash table
 typedef std::unordered_multimap<Key, NodeInfo> MCTSHashTable;
 
-Node get_node(const Position& pos, bool mcts);
-
 extern MCTSHashTable MCTS;
-extern int proirDeth[MAX_PLY];
 
 
 #endif // #ifndef MONTECARLO_H_INCLUDED

@@ -38,12 +38,11 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-int threadCounter = 0;
+int threadCounter;
 
 //kelly begin
 bool useLearning = true;
 bool enabledLearningProbe;
-
 namespace Search {
 
   LimitsType Limits;
@@ -157,8 +156,6 @@ void Search::init() {
           for (int mc = 1; mc < 64; ++mc)
           {
               double r = log(d) * log(mc) / 1.95;
-			  
-			  proirDeth[mc-1] = int(std::round(r));
 
               Reductions[NonPV][imp][d][mc] = int(std::round(r));
               Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - 1, 0);
@@ -211,20 +208,8 @@ void MainThread::search() {
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
-  //  MCTS.clear();
   threadCounter = 0;
- /* 	auto it = MCTS.begin();
-  
-  while(it != MCTS.end())
-  {
-	  Node node = &(it->second);
-	if(!node->AB)
-		it = MCTS.erase(it);
-	else
-		it++;
-  }
-  */
-
+enabledLearningProbe = false;
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
@@ -279,6 +264,7 @@ void MainThread::search() {
       for (Thread* th : Threads)
       {
           Depth depthDiff = th->completedDepth - bestThread->completedDepth;
+         // Value scoreDiff = th->rootMoves[0].score - bestThread->rootMoves[0].score;
 
           // Select the thread with the best score, always if it is a mate
           if ((depthDiff >= 0 || th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY))
@@ -288,7 +274,7 @@ void MainThread::search() {
 
   previousScore = bestThread->rootMoves[0].score;
   
-  
+   
   //kelly begin	
   if (bestThread->completedDepth > 4 * ONE_PLY)
   {
@@ -344,6 +330,8 @@ void Thread::search() {
       mainThread->failedLow = false;
       mainThread->bestMoveChanges = 0;
   }
+  else
+	  threadCounter++;
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
@@ -354,11 +342,11 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
-	if (!mainThread)
-		threadCounter++;
+
 
   if (USE_MONTE_CARLO
-  && (mainThread || threadCounter > 2))
+     && (mainThread || threadCounter > 2)
+	 )
       MonteCarlo(rootPos).test();
   else
 
@@ -580,7 +568,7 @@ namespace {
     if (!rootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if ((Threads.stop.load(std::memory_order_relaxed) && !mcts) || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
+        if ((!mcts && Threads.stop.load(std::memory_order_relaxed)) || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
             return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
                                                   : DrawValue[pos.side_to_move()];
 
@@ -646,38 +634,7 @@ namespace {
         }
         return ttValue;
     }
-
-    // Step 4a. Tablebase probe
-    if (!rootNode && TB::Cardinality)
-    {
-        int piecesCount = pos.count<ALL_PIECES>();
-
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0
-            && !pos.can_castle(ANY_CASTLING))
-        {
-            TB::ProbeState err;
-            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
-
-            if (err != TB::ProbeState::FAIL)
-            {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-
-                int drawScore = TB::UseRule50 ? 1 : 0;
-
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply + 1
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply - 1
-                                        :  VALUE_DRAW + 2 * v * drawScore;
-
-                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation());
-
-                return value;
-            }
-        }
-    }
+	
 	//from Kelly begin
     expTTHit = false;
     bool updatedLearning = false;
@@ -745,6 +702,39 @@ namespace {
     }
     //from Kelly end
     
+
+
+    // Step 4a. Tablebase probe
+    if (!rootNode && TB::Cardinality)
+    {
+        int piecesCount = pos.count<ALL_PIECES>();
+
+        if (    piecesCount <= TB::Cardinality
+            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+            &&  pos.rule50_count() == 0
+            && !pos.can_castle(ANY_CASTLING))
+        {
+            TB::ProbeState err;
+            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
+
+            if (err != TB::ProbeState::FAIL)
+            {
+                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+
+                int drawScore = TB::UseRule50 ? 1 : 0;
+
+                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply + 1
+                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply - 1
+                                        :  VALUE_DRAW + 2 * v * drawScore;
+
+                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                          MOVE_NONE, VALUE_NONE, TT.generation());
+
+                return value;
+            }
+        }
+    }
 
     // Step 5. Evaluate the position statically
     if (inCheck)
@@ -1125,7 +1115,7 @@ moves_loop: // When in check search starts from here
       // Finished searching the move. If a stop occurred, the return value of
       // the search cannot be trusted, and we return immediately without
       // updating best move, PV and TT.
-      if (Threads.stop.load(std::memory_order_relaxed) && !mcts)
+      if (!mcts && Threads.stop.load(std::memory_order_relaxed))
           return VALUE_ZERO;
 
       if (rootNode)
@@ -1168,25 +1158,14 @@ moves_loop: // When in check search starts from here
 
               if (PvNode && !rootNode) // Update pv even in fail-high case
                   update_pv(ss->pv, move, (ss+1)->pv);
-				  
-			/*	 if(!mcts)
-			  {
-				  Node s = get_node(pos, false);
-				  if(s != nullptr)
-				  {
-					s->lock.acquire();
-					s->AB = true;
-					s->lock.release();
-				  }
-				  
-			  }*/
+
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
                   alpha = value;
               else
               {
                   assert(value >= beta); // Fail high
                   break;
-              }			  
+              }
           }
       }
 
@@ -1232,15 +1211,13 @@ moves_loop: // When in check search starts from here
              && is_ok((ss-1)->currentMove))
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
 
-    if (!excludedMove && !(mcts && ttHit))
-	{
+    if (!excludedMove)
         tte->save(posKey, value_to_tt(bestValue, ss->ply),
                   bestValue >= beta ? BOUND_LOWER :
                   PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
                   depth, bestMove, ss->staticEval, TT.generation());
 
-	}
-	assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
+    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     return bestValue;
   }
@@ -1299,7 +1276,7 @@ moves_loop: // When in check search starts from here
     ttMove = ttHit ? tte->move() : MOVE_NONE;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
-    if (!PvNode
+    if (  !PvNode
         && ttHit
         && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
@@ -1619,9 +1596,9 @@ moves_loop: // When in check search starts from here
 
   Value minimax_value(Position& pos, Search::Stack* ss, Depth depth, Value alpha, Value beta) {
 
-//    Threads.stopOnPonderhit = Threads.stop = false;
-    alpha = -VALUE_INFINITE;
-    beta = VALUE_INFINITE;
+ //   Threads.stopOnPonderhit = Threads.stop = false;
+ //   Value alpha = -VALUE_INFINITE;
+ //   Value beta = VALUE_INFINITE;
     Move pv[MAX_PLY+1];
     ss->pv = pv;
 
@@ -1674,8 +1651,8 @@ moves_loop: // When in check search starts from here
     if (Threads.ponder)
         return;
 
-//    if (USE_MONTE_CARLO)
- //       elapsed = 2 * elapsed;
+    if (USE_MONTE_CARLO)
+        elapsed = (2 * elapsed)/3+elapsed;
 
     if (   (Limits.use_time_management() && elapsed > Time.maximum())
         || (Limits.movetime && elapsed >= Limits.movetime)
@@ -1818,3 +1795,4 @@ void setStartPoint()
 	useLearning = true;
 }
 //from Kelly end
+
