@@ -71,6 +71,9 @@ public:
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;
   ContinuationHistory contHistory;
+  uint16_t MagicTacticSolver;
+  uint16_t kgA;
+  uint16_t thB;
 };
 
 
