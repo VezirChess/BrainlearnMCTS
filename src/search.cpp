@@ -342,6 +342,18 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
+  
+if(!Options["MagicTacticSolver"]){
+MagicTacticSolver = 1;}
+else if(Options["MagicTacticSolver"]){
+MagicTacticSolver = 1/1000;}
+
+if(MagicTacticSolver == 1/1000){
+kgA = 1/100;
+thB = 100;}
+else if(MagicTacticSolver == 1){
+kgA = 1;
+thB = 1;}
 
 
   if (USE_MONTE_CARLO
